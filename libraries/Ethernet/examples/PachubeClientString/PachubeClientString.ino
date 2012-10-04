@@ -6,7 +6,7 @@
  the Adafruit Ethernet shield, either one will work, as long as it's got
  a Wiznet Ethernet module on board.
  
- This example has been updated to use version 2.0 of the Pachube.com API. 
+ This example has been updated to use version 2.0 of the pachube.com API. 
  To make it work, create a feed with two datastreams, and give them the IDs
  sensor1 and sensor2. Or change the code below to match your feed.
  
@@ -18,8 +18,10 @@
  * Ethernet shield attached to pins 10, 11, 12, 13
  
  created 15 March 2010
- updated 27 Feb 2012
+ modified 9 Apr 2012
  by Tom Igoe with input from Usman Haque and Joe Saavedra
+ modified 8 September 2012
+ by Scott Fitzgerald
  
  http://arduino.cc/en/Tutorial/PachubeClientString
  This code is in the public domain.
@@ -30,28 +32,40 @@
 #include <Ethernet.h>
 
 
-#define APIKEY         "YOUR API KEY GOES HERE" // replace your pachube api key here
+/#define APIKEY         "YOUR API KEY GOES HERE" // replace your Pachube api key here
 #define FEEDID         00000 // replace your feed ID
 #define USERAGENT      "My Project" // user agent is the project name
+
 
 // assign a MAC address for the ethernet controller.
 // fill in your address here:
   byte mac[] = { 
   0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
+
 // fill in an available IP address on your network here,
 // for manual configuration:
-IPAddress ip(10,0,0,20);
+IPAddress ip(10,0,1,20);
 
 // initialize the library instance:
 EthernetClient client;
 
-unsigned long lastConnectionTime = 0;        // last time you connected to the server, in milliseconds
-boolean lastConnected = false;      // state of the connection last time through the main loop
-const unsigned long postingInterval = 10000;  //delay between updates to Pachube.com
+// if you don't want to use DNS (and reduce your sketch size)
+// use the numeric IP instead of the name for the server:
+IPAddress server(216,52,233,121);      // numeric IP for api.pachube.com
+//char server[] = "api.pachube.com";   // name address for pachube API
+
+unsigned long lastConnectionTime = 0;          // last time you connected to the server, in milliseconds
+boolean lastConnected = false;                 // state of the connection last time through the main loop
+const unsigned long postingInterval = 10*1000;  //delay between updates to pachube.com
 
 void setup() {
-  // start serial port:
+ // Open serial communications and wait for port to open:
   Serial.begin(9600);
+  while (!Serial) {
+    ; // wait for serial port to connect. Needed for Leonardo only
+  }
+
+
   // give the ethernet module time to boot up:
   delay(1000);
   // start the Ethernet connection:
@@ -66,9 +80,9 @@ void loop() {
   // read the analog sensor:
   int sensorReading = analogRead(A0);   
   // convert the data to a String to send it:
-  
+
   String dataString = "sensor1,";
- dataString += sensorReading;
+  dataString += sensorReading;
 
   // you can append multiple readings to this String if your
   // pachube feed is set up to handle multiple values:
@@ -93,7 +107,7 @@ void loop() {
   }
 
   // if you're not connected, and ten seconds have passed since
-  // your last connection, then connect again and send data:
+  // your last connection, then connect again and send data: 
   if(!client.connected() && (millis() - lastConnectionTime > postingInterval)) {
     sendData(dataString);
   }
@@ -105,29 +119,27 @@ void loop() {
 // this method makes a HTTP connection to the server:
 void sendData(String thisData) {
   // if there's a successful connection:
-  if (client.connect("api.pachube.com", 80)) {
+  if (client.connect(server, 80)) {
     Serial.println("connecting...");
     // send the HTTP PUT request:
     client.print("PUT /v2/feeds/");
     client.print(FEEDID);
     client.println(".csv HTTP/1.1");
-    client.print("Host: api.pachube.com\n");
-    client.print("X-PachubeApiKey: ");
+    client.println("Host: api.pachube.com");
+    client.print("X-pachubeApiKey: ");
     client.println(APIKEY);
     client.print("User-Agent: ");
     client.println(USERAGENT);
     client.print("Content-Length: ");
-    client.println(thisData.length(), DEC);
+    client.println(thisData.length());
 
     // last pieces of the HTTP PUT request:
-    client.print("Content-Type: text/csv\n");
-    client.println("Connection: close\n");
+    client.println("Content-Type: text/csv");
+    client.println("Connection: close");
+    client.println();
 
     // here's the actual content of the PUT request:
     client.println(thisData);
-
-    // note the time that the connection was made:
-    lastConnectionTime = millis();
   } 
   else {
     // if you couldn't make a connection:
@@ -135,8 +147,8 @@ void sendData(String thisData) {
     Serial.println();
     Serial.println("disconnecting.");
     client.stop();
-    lastConnected = client.connected();
   }
+  // note the time that the connection was made or attempted:
+  lastConnectionTime = millis();
 }
-
 

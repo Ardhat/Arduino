@@ -169,6 +169,9 @@ public class Base {
     // run static initialization that grabs all the prefs
     Preferences.init(null);
 
+    // load the I18n module for internationalization
+    I18n.init(Preferences.get("editor.languages.current"));
+
     // setup the theme coloring fun
     Theme.init();
 
@@ -1565,7 +1568,19 @@ public class Base {
 
 
   static public File getSketchbookLibrariesFolder() {
-    return new File(getSketchbookFolder(), "libraries");
+    File libdir = new File(getSketchbookFolder(), "libraries");
+    if (!libdir.exists()) {
+      try {
+        libdir.mkdirs();
+        File readme = new File(libdir, "readme.txt");
+        FileWriter freadme = new FileWriter(readme);
+        freadme.write(_("For information on installing libraries, see: " +
+                        "http://arduino.cc/en/Guide/Libraries\n"));
+        freadme.close();
+      } catch (Exception e) {
+      }
+    }
+    return libdir;
   }
 
 
